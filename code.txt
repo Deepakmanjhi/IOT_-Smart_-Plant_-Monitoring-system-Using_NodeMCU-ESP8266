@@ -1,0 +1,101 @@
+// IOT Smart Plant Monitoring System
+#define BLYNK_PRINT Serial   
+#include <SPI.h>
+#include <ESP8266WiFi.h> 
+#include <BlynkSimpleEsp8266.h>
+#define BLYNK_PRINT Serial
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS D2
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+#define BLYNK_TEMPLATE_ID "TMPLngjY_cyE"
+#define BLYNK_DEVICE_NAME "Quickstart Template"
+#define BLYNK_AUTH_TOKEN "Uq9bG_IZbY5eZHslDQHvmxVTUjgPkuq1"
+#include "DHTesp.h"
+#ifdef ESP32
+#pragma message(THIS EXAMPLE IS FOR ESP8266 ONLY!)
+#error Select ESP8266 board.
+#endif
+//char auth[] = "9Q4xXUBPATgehsu70t17L-H0D1ZOMuLi"
+char auth[] = "TiPcyaSUQeQ1qz1fm8rqkHWQR-PJCp9S";
+
+//char auth[] ="6qUvNIKNkNasMJbMKdVKiDcob7d_f_1S"; //alternate auth token  
+
+//char auth[] =BLYNK_AUTH_TOKEN;
+
+char ssid[] = "GalaxyM30s4823";  //change when wifi is different   
+char pass[] = "@7185.com";    // change password accordingly ssid
+ 
+#define sensorPin D3
+int sensorState = 0;
+int lastState = 0;
+DHTesp dht;
+
+BlynkTimer timer;
+void sendSensor()
+{
+  float humidity = dht.getHumidity();
+  float temperature = dht.getTemperature();
+  Serial.print(dht.getStatusString());
+  Serial.print("\t");
+  Serial.print(humidity, 1);
+  Serial.print("\t\t");
+  Serial.println(temperature, 1);
+ 
+  Blynk.virtualWrite(V5, humidity);  //V5 is for Humidity
+  Blynk.virtualWrite(V6, temperature);  //V6 is for Temperature
+}
+void setup()
+{
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+   pinMode(sensorPin, INPUT);
+
+  timer.setInterval(1000L, sendSensor);
+
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("Status\tHumidity (%)\tTemperature (C)");
+  // Autodetect is not working reliable, don't use the following line
+  // dht.setup(17);
+  // use this instead: 
+  dht.setup(D1, DHTesp::DHT11); // Connect DHT sensor to GPIO 5
+  Blynk.begin(auth, ssid, pass);
+   sensors.begin();
+}
+int sensor=0;
+void sendTemps()
+{
+sensor=analogRead(A0);
+Serial.println("sensor");
+Serial.println(sensor);
+Blynk.virtualWrite(V2,sensor);
+}
+void loop()
+{
+  Blynk.run(); 
+  timer.run(); 
+  sendTemps();
+  sensorState = digitalRead(sensorPin);
+Serial.println(sensorState);
+
+if (sensorState == 1 && lastState == 0) {
+  Serial.println("needs water, send notification");
+  Blynk.notify("Water your plants");
+  delay(1000);
+//send notification
+           
+  } 
+  else if (sensorState == 1 && lastState == 1) {
+    //do nothing, has not been watered yet
+  Serial.println("has not been watered yet");
+  delay(1000);
+  }
+  else {
+    //st
+    Serial.println("does not need water");
+  }
+ 
+  delay(100);
+}
